@@ -234,7 +234,7 @@ const sortedRegions = computed(() => {
   })
 })
 
-// Funções da API - CORRIGIDA para lidar com respostas vazias
+// Funções da API - CORRIGIDA para tratar erro 409
 const apiCall = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -244,23 +244,29 @@ const apiCall = async (endpoint, options = {}) => {
       },
       ...options
     })
-    
+        
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Erro ${response.status}`)
+      // Tratamento específico para erro 409 (região já existe)
+      if (response.status === 409) {
+        const errorMessage = await response.text()
+        throw new Error(errorMessage)
+      }
+      
+      // Para outros erros
+      throw new Error(`Erro ${response.status}`)
     }
-    
+        
     // Se não há conteúdo (status 204), retornar null
     if (response.status === 204 || response.headers.get('content-length') === '0') {
       return null
     }
-    
+        
     // Verificar se há conteúdo para parsear
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
       return await response.json()
     }
-    
+        
     return null
   } catch (error) {
     console.error('API Error:', error)
